@@ -1,0 +1,19 @@
+{
+    "name": "validation",
+    "description": "validation...",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "shuc324",
+            "email": "shuc324@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.5.9"    
+    },
+    "autoload": {
+        "psr-4": {
+            "Shuc324\\Validation\\": ""     
+        }
+    }
+}
