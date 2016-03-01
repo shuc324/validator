@@ -1,6 +1,8 @@
 <?php
 namespace Shuc324\Validation;
 
+use Closure;
+
 class Validator
 {
     private $var;
@@ -16,13 +18,10 @@ class Validator
         if (!is_array($data) || empty($data)) {
             throw new ValidationException('待校验数据必须为非空数组', 1);
         }
-
         if (!is_array($format) || empty($format)) {
             throw new ValidationException('字段校验格式必须设置并为数组', 1);
         }
-
-        $validation = new static();
-        return $validation->start($data, $format);
+        return (new static())->start($data, $format);
     }
 
     protected function ruleExplode($rules)
@@ -32,17 +31,14 @@ class Validator
 
     protected function parse(array $format)
     {
-        $parse = [];
-        foreach ($format as $name => $rules) {
-            $parse[$name] = $this->ruleExplode($rules);
-        }
-        return $parse;
+        return array_map(function ($item) use ($this) {
+            return $this->ruleExplode($item);
+        }, $format);
     }
 
     protected function parseData(array $format)
     {
         $parse = $this->parse($format);
-
         foreach ($parse as $name => $rules) {
             foreach ($rules as $rule) {
                 $data = explode(':', $rule);
@@ -55,36 +51,29 @@ class Validator
     // 没办法只能用eval
     protected function evalArray(array $keys, $value)
     {
-        $arr = null;
-        $str = '$arr';
-        foreach ($keys as $key) {
+        $arr = []; $str = '$arr';
+        array_map(function($key) use (&$str) {
             $key = is_numeric($key) ? intval($key) : '\'' . $key . '\'';
             $str .= '[' . $key . ']';
-        }
+        }, $keys);
         eval($str . ' = ' . $value . ';');
         return $arr;
     }
 
     protected function start(array $data, array $format)
     {
-
         $this->parseData($format);
-
         foreach ($data as $field => $value) {
-
             // 此处去支持点语法(数组，列表)验证
             $pieces = explode('.', $field);
-
             if (!isset($this->parseData[$pieces[0]])) {
                 continue;
             }
-
             switch (count($pieces)) {
                 // 异常
                 case 0:
                     throw new ValidationException('字段名不能为空', 1);
                     break;
-
                 // value
                 case 1:
                     foreach ($this->parseData[$field] as $method => $argument) {
@@ -101,7 +90,6 @@ class Validator
                         }
                     }
                     break;
-
                 // array
                 default:
                     $array = $this->evalArray($pieces, $value);
@@ -123,7 +111,6 @@ class Validator
                     break;
             }
         }
-
         return $this->data;
     }
 
@@ -184,20 +171,17 @@ class Validator
     }
 
     # callBack:\namespace\class@method
-    protected function vCallBack($var, $callable)
+    protected function vCallBack($var, Closure $callable)
     {
-        $arr = explode('@', $callable);
-        if (count($arr) < 2) {
-            throw new ValidationException('请调用回调方法');
-        }
+        list($class, $method) = explode('@', $callable);
         if (!is_array($var)) {
             throw new ValidationException('回调验证只支持数组字段');
         }
-        if (!class_exists($arr[0], $arr[1])) {
-            throw new ValidationException('回调方法' . implode('::', $arr) . '未定义');
+        if (!class_exists($class, $method)) {
+            throw new ValidationException('回调方法' . implode('::', [$class, $method]) . '未定义');
         }
-        if (!call_user_func_array([$arr[0], $arr[1]], [$var])) {
-            throw new ValidationException('字段' . $this->var . '不能通过' . implode('::', $arr) . '的验证');
+        if (!call_user_func_array([$class, $method], [$var])) {
+            throw new ValidationException('字段' . $this->var . '不能通过' . implode('::', [$class, $method]) . '的验证');
         }
         // 数组类型必须参照此处
         return isset($this->val) ? $this->val : $var;
