@@ -13,7 +13,7 @@ class Validator
 
     private $parseData = [];
 
-    public static function run($data, $format)
+    public function __construct($data, $format)
     {
         if (!is_array($data) || empty($data)) {
             throw new ValidationException('待校验数据必须为非空数组', 1);
@@ -21,7 +21,7 @@ class Validator
         if (!is_array($format) || empty($format)) {
             throw new ValidationException('字段校验格式必须设置并为数组', 1);
         }
-        return (new static())->start($data, $format);
+        return $this->start($data, $format);
     }
 
     protected function ruleExplode($rules)
@@ -46,6 +46,11 @@ class Validator
                 $this->parseData[$name][$method] = explode(',', array_shift($data));
             }
         }
+    }
+
+    protected function validatorMethodName($validator)
+    {
+        return 'v' . ucfirst($validator);
     }
 
     // 没办法只能用eval
@@ -81,12 +86,12 @@ class Validator
                             $this->data[$field] = $value;
                         }
                         array_unshift($argument, $this->data[$field]);
-                        if (method_exists($this, 'v' . $method)) {
+                        if (method_exists($this, $this->validatorMethodName($method))) {
                             $this->var = $field;
-                            $this->data[$field] = call_user_func_array([$this, 'v' . ucfirst($method)], $argument);
+                            $this->data[$field] = call_user_func_array([$this, $this->validatorMethodName($method)], $argument);
                             $this->var = null;
                         } else {
-                            throw new ValidationException('mongoDB字段验证方法' . get_class($this) . '->v' . ucfirst($method) . '()不存在', 1);
+                            throw new ValidationException('mongoDB字段验证方法' . get_class($this) . '->' . $this->validatorMethodName($method) . '()不存在', 1);
                         }
                     }
                     break;
@@ -98,14 +103,14 @@ class Validator
                             $this->data[$field] = $array[$pieces[0]];
                         }
                         array_unshift($argument, $this->data[$field]);
-                        if (method_exists($this, 'v' . $method)) {
+                        if (method_exists($this, $this->validatorMethodName($method))) {
                             $this->val = $value;
                             $this->var = $pieces[0];
-                            $this->data[$field] = call_user_func_array([$this, 'v' . ucfirst($method)], $argument);
+                            $this->data[$field] = call_user_func_array([$this, $this->validatorMethodName($method)], $argument);
                             $this->val = null;
                             $this->var = null;
                         } else {
-                            throw new ValidationException('mongoDB字段验证方法' . get_class($this) . '->v' . ucfirst($method) . '()不存在', 1);
+                            throw new ValidationException('mongoDB字段验证方法' . get_class($this) . '->' . $this->validatorMethodName($method) . '()不存在', 1);
                         }
                     }
                     break;
@@ -113,6 +118,8 @@ class Validator
         }
         return $this->data;
     }
+
+    /*************************** validatorMethodName  ***************************/
 
     # enum:0/1/2
     protected function vEnum($var, $str)
