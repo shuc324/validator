@@ -3,7 +3,13 @@ namespace Shuc324\Validation;
 
 class Validator
 {
+    private $var;
+
+    private $val;
+
     private $data = [];
+
+    private $parseData = [];
 
     public static function run($data, $format)
     {
@@ -26,10 +32,10 @@ class Validator
 
     protected function parse(array $format)
     {
+        $parse = [];
         foreach ($format as $name => $rules) {
             $parse[$name] = $this->ruleExplode($rules);
         }
-
         return $parse;
     }
 
@@ -49,6 +55,7 @@ class Validator
     // 没办法只能用eval
     protected function evalArray(array $keys, $value)
     {
+        $arr = null;
         $str = '$arr';
         foreach ($keys as $key) {
             $key = is_numeric($key) ? intval($key) : '\'' . $key . '\'';
